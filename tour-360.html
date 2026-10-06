@@ -1,0 +1,1253 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14201D">
+<title>Tour 360° · AP1842</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- fontes sem bloquear a renderização: o texto aparece na fonte do sistema e troca quando chegam -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" media="print" onload="this.media='all'">
+<style>
+/* Protótipo do tour 360° (V1.1). Página pública do imóvel + tour imersivo + o que chega no LGF.
+   Autônomo: nenhum script externo. Os panoramas são gerados no navegador a partir de uma cena
+   procedural; em produção o mesmo visualizador recebe a foto 360° do captador. */
+:root{
+  --bg:#EEF2F1; --surface:#FFFFFF; --surface-2:#E6ECEA; --ink:#14201D; --muted:#56655F; --line:#D2DBD8;
+  --accent:#2445C2; --accent-ink:#FFFFFF; --accent-soft:#E3E9FB;
+  --rent:#0B7765; --rent-soft:#DDF1EC; --ok:#1C8648; --warn:#B07A00; --late:#C33328;
+  --wa:#1A9E50; --shadow:0 1px 2px rgb(20 32 29 / .06),0 6px 20px rgb(20 32 29 / .08);
+  --glass:rgb(14 20 18 / .72); --glass-line:rgb(255 255 255 / .12); --on-glass:#F2F6F4; --on-glass-muted:#B4C2BD;
+  --r-sm:8px; --r-md:12px; --r-lg:16px;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1412; --surface:#151F1C; --surface-2:#1D2926; --ink:#E4ECE9; --muted:#93A39E; --line:#2A3733;
+  --accent:#8AA2FF; --accent-ink:#0D1412; --accent-soft:#1F2846; --rent:#45C7AE; --rent-soft:#123029;
+  --ok:#4CC683; --warn:#E8B840; --late:#FF7466; --wa:#3BC874;
+  --shadow:0 1px 2px rgb(0 0 0 / .4),0 6px 20px rgb(0 0 0 / .35); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1412; --surface:#151F1C; --surface-2:#1D2926; --ink:#E4ECE9; --muted:#93A39E; --line:#2A3733;
+  --accent:#8AA2FF; --accent-ink:#0D1412; --accent-soft:#1F2846; --rent:#45C7AE; --rent-soft:#123029;
+  --ok:#4CC683; --warn:#E8B840; --late:#FF7466; --wa:#3BC874;
+  --shadow:0 1px 2px rgb(0 0 0 / .4),0 6px 20px rgb(0 0 0 / .35); color-scheme:dark}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--f-body);-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;touch-action:manipulation}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- página do imóvel ---------- */
+.site-h{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;border-bottom:1px solid var(--line);background:var(--surface)}
+.logo{display:flex;align-items:baseline;gap:6px;font-family:var(--f-display);font-weight:700;font-size:20px}
+.logo small{font:600 12px var(--f-body);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.proto{margin-left:auto;font-size:12px;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+main{max-width:1240px;margin:0 auto;padding:0 0 calc(96px + env(safe-area-inset-bottom))}
+.layout{display:grid;gap:0;grid-template-columns:minmax(0,1fr)}
+[hidden]{display:none!important}
+.info{padding:20px 16px 0;display:grid;gap:22px;min-width:0;grid-template-columns:minmax(0,1fr)}
+.code{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.title h1{font-size:26px;line-height:1.15;margin-top:4px}
+.title p{margin:6px 0 0;color:var(--muted)}
+.price{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.price b{font-family:var(--f-mono);font-size:26px;font-weight:600;letter-spacing:-.02em}
+.price span{color:var(--muted);font-size:14px}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--rent);background:var(--rent-soft);border-radius:999px;padding:3px 10px}
+.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-block:1px solid var(--line);padding:12px 0}
+.facts div{display:grid;gap:2px;text-align:left;padding-inline:4px}
+.facts div+div{border-left:1px solid var(--line);padding-left:12px}
+.facts b{font-family:var(--f-mono);font-size:18px;font-weight:600}
+.facts span{font-size:13px;color:var(--muted)}
+.sec-t{font-size:19px;margin-bottom:10px}
+.rooms{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(200px,62%);gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 16px 8px;margin-inline:-16px;overscroll-behavior-x:contain;scrollbar-width:none}
+.rooms::-webkit-scrollbar{display:none}
+.room-c{scroll-snap-align:start;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-md);padding:0;text-align:left;overflow:hidden;display:grid;min-height:44px}
+.room-c .ph{aspect-ratio:4/3;background:linear-gradient(110deg,var(--surface-2) 30%,var(--bg) 50%,var(--surface-2) 70%) 0 0/300% 100%;animation:shimmer 1.4s linear infinite;display:block;width:100%;object-fit:cover}
+.room-c img.ph{animation:none}
+.room-c div{padding:10px 12px 12px;display:grid;gap:2px}
+.room-c b{font-size:15px}
+.room-c span{font-size:13px;color:var(--muted);font-family:var(--f-mono)}
+@keyframes shimmer{to{background-position:-300% 0}}
+.desc p{margin:0 0 10px;max-width:62ch;color:var(--ink)}
+.desc ul{margin:0;padding-left:18px;color:var(--muted);display:grid;gap:4px}
+details.capt{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);padding:12px 14px}
+details.capt summary{font-weight:600;cursor:pointer;min-height:24px}
+details.capt p{margin:8px 0;font-size:14px;color:var(--muted);max-width:62ch}
+.file{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border:1px dashed var(--muted);border-radius:var(--r-sm);font-weight:600;font-size:14px;cursor:pointer}
+.file input{position:absolute;opacity:0;width:1px;height:1px}
+.foot-note{font-size:13px;color:var(--muted);max-width:62ch;padding:0 16px}
+
+/* barra de ação fixa (página) */
+.cta-bar{position:fixed;inset:auto 0 0 0;z-index:20;display:flex;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--surface) 92%,transparent);border-top:1px solid var(--line);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 18px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:16px;white-space:nowrap;transition:transform .12s var(--ease)}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);flex:1}
+.btn.wa{color:#fff;background:var(--wa);border-color:var(--wa)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.wa{color:#06150C}}
+@media (hover:hover) and (pointer:fine){.btn:hover{filter:brightness(1.06)} .room-c:hover{border-color:var(--muted)}}
+
+/* ---------- palco 3D (prévia na página e tour imersivo) ---------- */
+.stage{position:relative;aspect-ratio:4/3;background:#0E1412;overflow:hidden;touch-action:pan-y;user-select:none;-webkit-user-select:none;contain:layout paint}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.stage .ov{pointer-events:none}
+.stage:not(.measuring) .ov{visibility:hidden}
+.stage-load{position:absolute;inset:0;display:grid;place-items:center;color:var(--on-glass-muted);font-size:14px;background:linear-gradient(110deg,#141c19 30%,#1e2925 50%,#141c19 70%) 0 0/300% 100%;animation:shimmer 1.6s linear infinite;transition:opacity .4s}
+.stage-load.gone{opacity:0;pointer-events:none}
+.enter{position:absolute;left:16px;bottom:16px;z-index:3;display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 18px 0 14px;border-radius:999px;border:1px solid var(--glass-line);background:var(--glass);color:var(--on-glass);font-weight:600;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:inset 0 1px 0 rgb(255 255 255 / .08)}
+.enter small{font-weight:500;color:var(--on-glass-muted);font-size:13px}
+.hint-drag{position:absolute;right:12px;top:12px;z-index:3;font-size:12px;color:var(--on-glass-muted);background:var(--glass);border:1px solid var(--glass-line);border-radius:999px;padding:4px 10px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.hud{display:none}
+
+.stage.immersive,.layout .stage.immersive{position:fixed;inset:0;top:0;z-index:50;aspect-ratio:auto;height:100dvh;border-radius:0;touch-action:none}
+.stage.immersive .enter,.stage.immersive .hint-drag{display:none}
+.stage.immersive .hud{display:block}
+body.locked{overflow:hidden}
+
+/* HUD: vidro escuro sobre o 3D (independe do tema da página) */
+.hud{color:var(--on-glass);font-size:14px}
+.glass{background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);box-shadow:inset 0 1px 0 rgb(255 255 255 / .07)}
+@media (prefers-reduced-transparency: reduce){.glass,.enter,.hint-drag{background:#121a17;backdrop-filter:none;-webkit-backdrop-filter:none}}
+.hud-top{position:absolute;z-index:4;top:calc(10px + env(safe-area-inset-top));left:calc(10px + env(safe-area-inset-left));right:calc(10px + env(safe-area-inset-right));display:flex;gap:8px;align-items:center}
+.ib{width:44px;height:44px;display:grid;place-items:center;border-radius:var(--r-sm);color:var(--on-glass);flex:none}
+.ib[aria-pressed="true"]{background:var(--on-glass);color:#111}
+.where{flex:1;min-width:0;border-radius:var(--r-sm);padding:5px 12px;min-height:44px;display:grid;align-content:center}
+.where b{font:600 15px var(--f-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.where span{font-size:12px;color:var(--on-glass-muted);font-family:var(--f-mono)}
+.hud-bot{position:absolute;z-index:4;left:calc(10px + env(safe-area-inset-left));right:calc(10px + env(safe-area-inset-right));bottom:calc(10px + env(safe-area-inset-bottom));display:grid;gap:8px}
+.tools{display:flex;gap:6px;align-items:center;border-radius:var(--r-md);padding:6px;overflow-x:auto;scrollbar-width:none}
+.tools::-webkit-scrollbar{display:none}
+.seg{display:flex;flex:none;border-radius:var(--r-sm);background:rgb(255 255 255 / .06);padding:2px}
+.seg button{border:0;background:transparent;color:var(--on-glass-muted);min-height:40px;padding:0 10px;border-radius:6px;font-size:14px;font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--on-glass);color:#111}
+.tg{flex:none;display:inline-flex;align-items:center;gap:6px;border:0;background:rgb(255 255 255 / .06);color:var(--on-glass);min-height:44px;padding:0 12px;border-radius:var(--r-sm);font-size:14px;font-weight:600}
+.tg[aria-pressed="true"]{background:var(--on-glass);color:#111}
+@media (max-width:440px){.tg span{display:none}.tg{width:44px;padding:0;justify-content:center}.seg button{padding:0 9px}}
+.hud-cta{display:flex;gap:8px}
+.hud-cta .btn{border:0}
+.btn.ghost-wa{background:var(--wa);color:#fff;border:0;padding:0 14px}
+.area{position:absolute;z-index:4;left:50%;transform:translateX(-50%);bottom:calc(128px + env(safe-area-inset-bottom));border-radius:999px;padding:6px 12px;font-size:13px;white-space:nowrap;display:none}
+.area b{font-family:var(--f-mono);font-weight:600}
+.stage.measuring .area{display:block}
+
+.map{position:absolute;z-index:4;right:calc(10px + env(safe-area-inset-right));top:calc(64px + env(safe-area-inset-top));width:112px;border-radius:var(--r-md);padding:6px;transition:width .3s var(--ease)}
+.map.big{width:min(300px,calc(100vw - 20px))}
+.map svg{display:block;width:100%;height:auto}
+.map .rm{fill:rgb(255 255 255 / .06);stroke:rgb(255 255 255 / .35);stroke-width:.05;cursor:pointer}
+.map .rm.on{fill:rgb(138 162 255 / .35);stroke:#AFC0FF}
+.map text{fill:var(--on-glass-muted);font:600 .38px var(--f-body);pointer-events:none;display:none}
+.map.big text{display:block}
+.map .cone{fill:rgb(175 192 255 / .45)}
+.map .me{fill:#fff;stroke:#2445C2;stroke-width:.08}
+.map-t{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--on-glass-muted);padding:0 2px 4px}
+.map-t button{border:0;background:none;color:var(--on-glass-muted);font-size:11px;min-height:28px;padding:0 4px}
+
+.pins{position:absolute;inset:0;z-index:3;pointer-events:none}
+.pin{position:absolute;left:0;top:0;pointer-events:auto;will-change:transform}
+.go{display:flex;flex-direction:column;align-items:center;gap:6px;border:0;background:none;padding:0;color:#fff}
+.go .ring{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;border:2px solid rgb(255 255 255 / .9);background:rgb(14 20 18 / .45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 0 0 6px rgb(255 255 255 / .12)}
+.go .lb{font-size:13px;font-weight:600;background:var(--glass);border:1px solid var(--glass-line);padding:3px 10px;border-radius:999px;white-space:nowrap}
+.go:active .ring{transform:scale(.94)}
+@media (prefers-reduced-motion: no-preference){.go .ring{animation:breathe 2.4s var(--ease) infinite}}
+@keyframes breathe{50%{box-shadow:0 0 0 11px rgb(255 255 255 / .05)}}
+.info-p{display:flex;align-items:center;gap:8px;border:0;background:none;padding:0;color:var(--on-glass);min-height:44px;min-width:44px;justify-content:flex-start}
+.info-p i{width:22px;height:22px;border-radius:50%;background:#fff;color:#111;display:grid;place-items:center;font:700 13px var(--f-body);font-style:normal;flex:none;box-shadow:0 0 0 5px rgb(255 255 255 / .2)}
+.info-p span{display:none;background:var(--glass);border:1px solid var(--glass-line);border-radius:var(--r-sm);padding:6px 10px;font-size:13px;max-width:200px;text-align:left}
+.info-p[aria-expanded="true"] span{display:block}
+.dim{font:600 13px var(--f-mono);color:#111;background:#FFD54A;border-radius:6px;padding:2px 7px;white-space:nowrap;pointer-events:none}
+.stage:not(.measuring) .dim,.stage.eq .go,.stage.eq .info-p,.stage.eq .map,.stage.eq .tools{display:none}
+.stage.moving .pins{opacity:0}
+.pins{transition:opacity .2s}
+.coach{position:absolute;z-index:5;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;border-radius:var(--r-lg);padding:16px 20px;max-width:260px;font-size:15px;transition:opacity .4s}
+.coach.gone{opacity:0;pointer-events:none}
+.eq-tag{display:none;font-size:12px;color:var(--on-glass-muted)}
+.stage.eq .eq-tag{display:inline}
+
+/* ---------- formulário de visita ---------- */
+dialog{border:0;padding:0;border-radius:var(--r-lg) var(--r-lg) 0 0;width:100%;max-width:520px;margin:auto auto 0;background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+dialog::backdrop{background:rgb(10 14 13 / .55)}
+.sheet{padding:18px 16px calc(18px + env(safe-area-inset-bottom));display:grid;gap:14px}
+.sheet h2{font-size:21px}
+.sheet p{margin:0;color:var(--muted);font-size:14px}
+.fld{display:grid;gap:6px}
+.fld label,.fld legend{font-weight:600;font-size:14px}
+.fld input{min-height:48px;font-size:16px;padding:0 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg)}
+.fld .err{color:var(--late);font-size:13px;min-height:0}
+fieldset.fld{border:0;padding:0;margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips label{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:999px;font-weight:500;cursor:pointer}
+.chips input{position:absolute;opacity:0}
+.chips input:checked+span{font-weight:700}
+.chips label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.chips label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.consent{font-size:13px;color:var(--muted)}
+.row{display:flex;gap:8px}
+@media (min-width:640px){dialog{border-radius:var(--r-lg);margin:auto}}
+
+/* ---------- resultado no LGF ---------- */
+#res{display:none;padding:20px 16px 40px;max-width:1100px;margin:0 auto}
+body.show-res main,body.show-res .cta-bar{display:none}
+body.show-res #res{display:block}
+#res h1{font-size:26px}
+#res > p{color:var(--muted);max-width:62ch}
+.res-grid{display:grid;gap:16px;margin-top:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;box-shadow:var(--shadow);min-width:0}
+.card h2{font-size:17px;margin-bottom:10px}
+.lead-h{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.lead-h b{font-size:17px}
+.lead-h .sub{font-size:13px;color:var(--muted)}
+.heat{font-weight:700;font-size:13px;border-radius:999px;padding:4px 10px;white-space:nowrap}
+.heat.alto{background:#FBE4E1;color:#A3271E}.heat.medio{background:#FBF0D3;color:#7A5500}.heat.baixo{background:var(--surface-2);color:var(--muted)}
+.tl{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:12px;border-left:2px solid var(--line);padding-left:14px}
+.tl li{position:relative;font-size:14px}
+.tl li::before{content:"";position:absolute;left:-20px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--surface);border:2px solid var(--muted)}
+.tl li.tour::before{border-color:var(--accent);background:var(--accent)}
+.tl time{display:block;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.kv div{background:var(--bg);border-radius:var(--r-sm);padding:10px}
+.kv b{display:block;font-family:var(--f-mono);font-size:18px}
+.kv span{font-size:12px;color:var(--muted)}
+.rule{font-size:13px;color:var(--muted);margin-top:12px}
+pre{margin:0;font:13px/1.5 var(--f-mono);background:var(--bg);border-radius:var(--r-sm);padding:12px;overflow:auto;max-height:520px}
+.res-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+
+.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translate(-50%,20px);z-index:80;opacity:0;pointer-events:none;background:#14201D;color:#F2F6F4;border-radius:var(--r-md);padding:12px 16px;font-size:14px;max-width:min(420px,calc(100vw - 32px));transition:opacity .25s,transform .25s var(--ease)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media (min-width:1024px){
+  .layout{grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:32px;padding:24px 24px 0}
+  .layout .stage{position:sticky;top:24px;border-radius:var(--r-lg);aspect-ratio:4/3}
+  .info{padding:0}
+  .title h1{font-size:32px}
+  .rooms{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;margin:0;padding:0}
+  .cta-bar{position:static;background:none;border:0;padding:0;backdrop-filter:none;-webkit-backdrop-filter:none}
+  main{padding-bottom:40px}
+  .foot-note{padding:24px 24px 0}
+  .res-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)}
+  .map{width:150px}
+  .hud-bot{left:50%;right:auto;transform:translateX(-50%);width:min(720px,calc(100vw - 20px))}
+}
+</style>
+</head>
+<body>
+<header class="site-h">
+  <div class="logo">LGF <small>Imóveis</small></div>
+  <span class="proto">Protótipo · tour 360°</span>
+</header>
+
+<main>
+  <div class="layout">
+    <div class="stage" id="stage" aria-label="Prévia 3D do imóvel">
+      <canvas id="gl" aria-hidden="true"></canvas>
+      <canvas id="ov" class="ov" aria-hidden="true"></canvas>
+      <div class="stage-load" id="load">Montando o 360°…</div>
+      <span class="hint-drag">Arraste para olhar</span>
+      <button class="enter" id="enter" type="button">
+        <svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>
+        <span>Entrar no imóvel <small>· 5 ambientes</small></span>
+      </button>
+
+      <div class="hud" id="hud">
+        <div class="pins" id="pins"></div>
+        <div class="hud-top">
+          <button class="ib glass" id="exit" type="button" aria-label="Sair do tour">
+            <svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+          </button>
+          <div class="where glass" aria-live="polite"><b id="w-name">Sala</b><span id="w-sub">1 de 5 ambientes</span></div>
+          <button class="ib glass" id="gyro" type="button" aria-pressed="false" aria-label="Olhar movendo o celular" hidden>
+            <svg class="i" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 9c-1 2-1 4 0 6M21 9c1 2 1 4 0 6"/></svg>
+          </button>
+        </div>
+        <div class="area glass" id="area"></div>
+        <div class="map glass" id="map">
+          <div class="map-t"><span>Planta</span><button type="button" id="map-x" aria-expanded="false">ampliar</button></div>
+          <svg id="map-svg" viewBox="-0.4 -2 9.3 10.4" role="group" aria-label="Planta do imóvel. Toque num ambiente para ir até ele."></svg>
+        </div>
+        <div class="coach glass" id="coach">Arraste para olhar ao redor.<br>Toque nos círculos para andar.</div>
+        <div class="hud-bot">
+          <div class="tools glass" role="toolbar" aria-label="Ver o imóvel">
+            <div class="seg" role="group" aria-label="Mobília">
+              <button type="button" data-style="vazio" aria-pressed="false">Vazio</button>
+              <button type="button" data-style="classico" aria-pressed="true">Clássico</button>
+              <button type="button" data-style="moderno" aria-pressed="false">Moderno</button>
+            </div>
+            <button class="tg" type="button" id="t-dim" aria-pressed="false" aria-label="Medidas">
+              <svg class="i" viewBox="0 0 24 24"><path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg><span>Medidas</span></button>
+            <button class="tg" type="button" id="t-night" aria-pressed="false" aria-label="Ver à noite">
+              <svg class="i" viewBox="0 0 24 24"><path d="M20 15A8 8 0 0 1 9 4a8 8 0 1 0 11 11z"/></svg><span>Noite</span></button>
+            <span class="eq-tag">Sua foto 360°</span>
+          </div>
+          <div class="hud-cta">
+            <button class="btn primary" type="button" data-cta="visita">Agendar visita</button>
+            <button class="btn ghost-wa" type="button" data-cta="wa" aria-label="Falar no WhatsApp">
+              <svg class="i" viewBox="0 0 24 24"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 19z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 .8c-1-.4-1.9-1.3-2.3-2.3l.8-1-1-2z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info">
+      <div class="title">
+        <div class="code">AP1842 · Locação</div>
+        <h1>Apartamento com suíte e varanda na Vila Mariana</h1>
+        <p>Rua Joinville, Vila Mariana, São Paulo</p>
+      </div>
+      <div class="price">
+        <b>R$ 3.200<span class="muted" style="font-size:15px">/mês</span></b>
+        <span>Condomínio R$ 780 · IPTU R$ 110</span>
+      </div>
+      <div><span class="badge"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg>Tour 360° disponível</span></div>
+      <div class="facts" aria-label="Características">
+        <div><b>66</b><span>m² úteis</span></div>
+        <div><b>1</b><span>suíte</span></div>
+        <div><b>1</b><span>vaga</span></div>
+        <div><b>8º</b><span>andar</span></div>
+      </div>
+      <section>
+        <h2 class="sec-t">Ambientes</h2>
+        <div class="rooms" id="rooms"></div>
+      </section>
+      <section class="desc">
+        <h2 class="sec-t">Sobre o imóvel</h2>
+        <p>Sala integrada à cozinha americana, com porta de vidro para a varanda voltada para o norte. Sol da manhã na sala e na varanda, suíte silenciosa para o fundo do prédio.</p>
+        <ul>
+          <li>Armários planejados na cozinha e na suíte</li>
+          <li>Piso amadeirado na área social e na suíte</li>
+          <li>Prédio com portaria 24 h, academia e bicicletário</li>
+        </ul>
+      </section>
+      <details class="capt">
+        <summary>Para o captador: testar com uma foto 360° real</summary>
+        <p>O tour aceita fotos equiretangulares (proporção 2:1) de câmeras 360°, como Insta360 e Ricoh Theta, ou do modo panorama 360° do celular. A foto não sai do seu aparelho.</p>
+        <label class="file"><input type="file" id="file" accept="image/jpeg,image/png,image/webp">
+          <svg class="i" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>Escolher foto 360°</label>
+      </details>
+    </div>
+  </div>
+  <p class="foot-note">Protótipo. Os ambientes são gerados no navegador para demonstrar a experiência; no produto, cada ambiente vem de uma foto 360° tirada pelo captador ou de um render 360° da construtora (lançamentos).</p>
+  <div class="cta-bar">
+    <button class="btn primary" type="button" data-cta="visita">Agendar visita</button>
+    <button class="btn wa" type="button" data-cta="wa">
+      <svg class="i" viewBox="0 0 24 24"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 19z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 .8c-1-.4-1.9-1.3-2.3-2.3l.8-1-1-2z"/></svg>WhatsApp</button>
+  </div>
+</main>
+
+<section id="res" aria-live="polite">
+  <h1>Chegou no LGF assim</h1>
+  <p>O formulário vira um evento bruto do conector <span class="mono">site</span> e passa pelo motor de leads como qualquer outro canal. O tour só acrescenta contexto: o corretor vê o que o cliente olhou antes de ligar.</p>
+  <div class="res-grid">
+    <div class="card">
+      <h2>Card na Central de Leads</h2>
+      <div class="lead-h"><div><b id="r-name"></b><div class="sub" id="r-sub"></div></div><span class="heat" id="r-heat"></span></div>
+      <div class="kv" id="r-kv"></div>
+      <ul class="tl" id="r-tl"></ul>
+      <p class="rule">Interesse vem de uma regra simples, sem IA: <b>alto</b> com 90 s ou mais e 4 ambientes, ou 2 voltas ao mesmo ambiente em 60 s; <b>médio</b> com 30 s ou 3 ambientes; <b>baixo</b> no resto.</p>
+    </div>
+    <div class="card">
+      <h2>Payload <span class="mono">InboundLead v1</span></h2>
+      <pre id="r-json"></pre>
+      <p class="rule"><span class="mono">engagement.tour</span> é um campo opcional proposto, aditivo à v1 (conectores antigos continuam válidos).</p>
+    </div>
+  </div>
+  <div class="res-act">
+    <button class="btn" type="button" id="r-sim">Simular visitante engajado</button>
+    <button class="btn primary" type="button" id="r-back" style="flex:none">Voltar ao imóvel</button>
+  </div>
+</section>
+
+<dialog id="dlg" aria-labelledby="dlg-t">
+  <form class="sheet" id="form" novalidate>
+    <h2 id="dlg-t">Agendar visita ao AP1842</h2>
+    <p id="dlg-p">Um corretor confirma o horário com você pelo WhatsApp.</p>
+    <div class="fld">
+      <label for="f-name">Seu nome</label>
+      <input id="f-name" name="name" autocomplete="name" required>
+      <div class="err" id="e-name"></div>
+    </div>
+    <div class="fld">
+      <label for="f-phone">WhatsApp</label>
+      <input id="f-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 9 0000-0000" required>
+      <div class="err" id="e-phone"></div>
+    </div>
+    <fieldset class="fld">
+      <legend>Quando prefere?</legend>
+      <div class="chips">
+        <label><input type="radio" name="when" value="Dia de semana, manhã" checked><span>Semana, manhã</span></label>
+        <label><input type="radio" name="when" value="Dia de semana, tarde"><span>Semana, tarde</span></label>
+        <label><input type="radio" name="when" value="Sábado"><span>Sábado</span></label>
+      </div>
+    </fieldset>
+    <p class="consent">Ao enviar, você autoriza o contato da imobiliária sobre este imóvel.</p>
+    <div class="row">
+      <button class="btn" type="button" id="f-cancel">Voltar</button>
+      <button class="btn primary" type="submit">Pedir visita</button>
+    </div>
+  </form>
+</dialog>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Dados do imóvel. Em metros; x para leste, z para sul, y para cima.
+   Na produção isso vem de property_media (kind = 'tour'): uma foto por
+   ambiente, posição do ponto na planta e os links entre ambientes.
+   ===================================================================== */
+const H = 2.7, T = 0.12;
+const ROOMS = [
+  { id:'sala',    nome:'Sala de estar e jantar', curto:'Sala',    rect:[0,0,5.5,4.5],    node:[0.95,1.55,3.95], yaw:0.62,  thumbYaw:0.62 },
+  { id:'cozinha', nome:'Cozinha americana',      curto:'Cozinha', rect:[5.5,0,8.5,4.5],  node:[6.55,1.55,4.0],  yaw:0.15,  thumbYaw:0.15 },
+  { id:'varanda', nome:'Varanda',                curto:'Varanda', rect:[0,-1.6,5.5,0],   node:[4.55,1.55,-0.7], yaw:-1.3,  thumbYaw:-1.3 },
+  { id:'suite',   nome:'Suíte',                  curto:'Suíte',   rect:[0,4.5,3.6,8],    node:[1.0,1.55,5.15],  yaw:2.55,  thumbYaw:2.45 },
+  { id:'banho',   nome:'Banheiro da suíte',      curto:'Banho',   rect:[3.6,4.5,5.5,8],  node:[4.3,1.55,5.25],  yaw:2.9,   thumbYaw:2.9 },
+];
+// Links entre ambientes: ponto no chão onde fica o círculo de "andar".
+const LINKS = {
+  sala:    [['varanda',[2.6,0,-0.7]],['cozinha',[6.2,0,2.2]],['suite',[2.9,0,5.0]]],
+  cozinha: [['sala',[4.6,0,2.4]]],
+  varanda: [['sala',[3.6,0,1.0]]],
+  suite:   [['sala',[2.9,0,3.9]],['banho',[4.1,0,5.4]]],
+  banho:   [['suite',[3.0,0,5.4]]],
+};
+const INFO = {
+  sala:    [[[0.35,0.02,2.0],'Piso vinílico amadeirado'],[[2.7,1.9,0.05],'Porta de vidro de correr, 4,5 m de vão'],[[2.4,0.02,0.9],'Sol da manhã: face norte']],
+  cozinha: [[[8.2,0.95,1.2],'Bancada em quartzo e cooktop por indução'],[[7.0,1.7,0.05],'Janela com vista livre']],
+  varanda: [[[2.75,1.15,-1.58],'Guarda-corpo com 1,05 m'],[[5.3,1.2,-0.8],'Ponto de gás para churrasqueira']],
+  suite:   [[[0.35,1.6,5.4],'Armário planejado até o teto'],[[1.8,1.6,7.95],'Janela antirruído para os fundos']],
+  banho:   [[[4.55,2.0,7.6],'Box de vidro até o teto'],[[5.45,1.2,5.35],'Bancada com gaveteiro']],
+};
+const STYLES = { vazio:'Vazio', classico:'Clássico', moderno:'Moderno' };
+
+/* ---------- utilidades ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const RM = matchMedia('(prefers-reduced-motion: reduce)');
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const fmtM = v => v.toFixed(2).replace('.', ',') + ' m';
+const toast = (msg, ms=3200) => { const t=$('#toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(toast.h); toast.h=setTimeout(()=>t.classList.remove('on'), ms); };
+const lin = hex => { const n=parseInt(hex.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255].map(c => Math.pow(c/255, 2.2)); };
+
+/* ---------- matrizes (column-major) ---------- */
+const M = {
+  persp(fy, a, n, f){ const t=1/Math.tan(fy/2); return new Float32Array([t/a,0,0,0, 0,t,0,0, 0,0,(f+n)/(n-f),-1, 0,0,2*f*n/(n-f),0]); },
+  look(e, c, u){
+    const z=norm(sub(e,c)), x=norm(cross(u,z)), y=cross(z,x);
+    return new Float32Array([x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0, -dot(x,e),-dot(y,e),-dot(z,e),1]);
+  },
+  mul(a, b){ const o=new Float32Array(16); for(let c=0;c<4;c++) for(let r=0;r<4;r++){ let s=0; for(let k=0;k<4;k++) s+=a[k*4+r]*b[c*4+k]; o[c*4+r]=s; } return o; },
+};
+function sub(a,b){ return [a[0]-b[0],a[1]-b[1],a[2]-b[2]]; }
+function add(a,b){ return [a[0]+b[0],a[1]+b[1],a[2]+b[2]]; }
+function dot(a,b){ return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+function cross(a,b){ return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+function norm(a){ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; }
+function basis(yaw, pitch){
+  const cp=Math.cos(pitch), f=[Math.sin(yaw)*cp, Math.sin(pitch), -Math.cos(yaw)*cp];
+  const r=norm([-f[2],0,f[0]]), u=cross(r,f);
+  return {f,r,u};
+}
+
+/* =====================================================================
+   Cena procedural: paredes, piso, teto, marcenaria fixa e mobília.
+   Vértice: posição(3) normal(3) cor linear(3) material(1).
+   Materiais: 0 pintura, 1 piso de madeira, 2 porcelanato, 4 céu,
+   5 luminária, 6 tecido, 7 tela, 8 metal, 9 planta, 10 tapete,
+   11 deck, 12 madeira de móvel, 13 pedra, 14 espelho.
+   ===================================================================== */
+function Geo(){ this.v=[]; this.foot=[]; }
+Geo.prototype.box = function(x0,y0,z0,x1,y1,z1,mat,hex){
+  const c=lin(hex), V=this.v;
+  const P=[[x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0],[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]];
+  const F=[[1,5,6,2,[1,0,0]],[4,0,3,7,[-1,0,0]],[3,2,6,7,[0,1,0]],[4,5,1,0,[0,-1,0]],[5,4,7,6,[0,0,1]],[0,1,2,3,[0,0,-1]]];
+  for (const [a,b,cc,d,n] of F) for (const i of [a,b,cc,a,cc,d]) V.push(...P[i], ...n, ...c, mat);
+  if (y0 < 0.05 && y1 - y0 > 0.06 && mat !== 10) this.foot.push([x0,z0,x1,z1]);
+  return this;
+};
+Geo.prototype.ball = function(cx,cy,cz,rx,ry,rz,mat,hex,seg=10){
+  const c=lin(hex), V=this.v, pt=(i,j)=>{ const th=i/seg*Math.PI, ph=j/seg*2*Math.PI; const n=[Math.sin(th)*Math.cos(ph), Math.cos(th), Math.sin(th)*Math.sin(ph)]; return [[cx+n[0]*rx, cy+n[1]*ry, cz+n[2]*rz], n]; };
+  for (let i=0;i<seg;i++) for (let j=0;j<seg;j++){
+    const q=[pt(i,j),pt(i+1,j),pt(i+1,j+1),pt(i,j+1)];
+    for (const k of [0,1,2,0,2,3]) V.push(...q[k][0], ...q[k][1], ...c, mat);
+  }
+  return this;
+};
+const PAINT='#ECE8E1', FRAME='#3B4043';
+
+// Parede ao longo de x (em z fixo) ou de z (em x fixo), com aberturas [a,b,y0,y1,tipo].
+function wall(g, axis, at, from, to, ops=[]){
+  const h=T/2, piece=(a,b,y0,y1)=>{ if (b-a<1e-3 || y1-y0<1e-3) return;
+    axis==='x' ? g.box(a,y0,at-h,b,y1,at+h,0,PAINT) : g.box(at-h,y0,a,at+h,y1,b,0,PAINT); };
+  let cur=from-h;
+  for (const [a,b,y0,y1,kind] of [...ops].sort((p,q)=>p[0]-q[0])){
+    piece(cur,a,0,H); piece(a,b,0,y0); piece(a,b,y1,H); cur=b;
+    if (kind==='glass' || kind==='win'){
+      const fr=(a2,b2,c0,c1)=> axis==='x' ? g.box(a2,c0,at-0.03,b2,c1,at+0.03,8,FRAME) : g.box(at-0.03,c0,a2,at+0.03,c1,b2,8,FRAME);
+      fr(a,b,y0,y0+0.05); fr(a,b,y1-0.05,y1); fr(a,a+0.05,y0,y1); fr(b-0.05,b,y0,y1);
+      const parts = kind==='glass' ? 3 : 2;
+      for (let k=1;k<parts;k++){ const m=a+(b-a)*k/parts; fr(m-0.025,m+0.025,y0,y1); }
+    }
+    if (kind==='door'){
+      const fr=(a2,b2,c0,c1)=> axis==='x' ? g.box(a2,c0,at-h-0.01,b2,c1,at+h+0.01,12,'#F4F1EC') : g.box(at-h-0.01,c0,a2,at+h+0.01,c1,b2,12,'#F4F1EC');
+      fr(a,a+0.04,0,y1); fr(b-0.04,b,0,y1); fr(a,b,y1-0.04,y1);
+    }
+  }
+  piece(cur,to+h,0,H);
+}
+
+function buildStatic(){
+  const g=new Geo();
+  // céu: caixa grande; a cor sai do shader pela direção vista do ponto da foto
+  g.box(-60,-40,-60,68,60,68,4,'#000000');
+  // pisos e tetos
+  const floorMat=[[1,'#B98B5E'],[2,'#D9D6D0'],[11,'#8C6A4F'],[1,'#B98B5E'],[2,'#BFC3C2']];
+  ROOMS.forEach((r,i)=>{ const [x0,z0,x1,z1]=r.rect; g.box(x0,-0.06,z0,x1,0,z1,floorMat[i][0],floorMat[i][1]); g.box(x0,H,z0,x1,H+0.06,z1,0,'#F6F5F2'); });
+  // paredes
+  wall(g,'x',-1.6,0,5.5,[[0.15,5.35,1.05,2.6,'open']]);
+  wall(g,'x',0,0,5.5,[[0.5,5.0,0,2.4,'glass']]);
+  wall(g,'x',0,5.5,8.5,[[6.3,7.7,1.05,2.25,'win']]);
+  wall(g,'z',8.5,0,4.5);
+  wall(g,'x',4.5,5.5,8.5);
+  wall(g,'x',4.5,0,3.6,[[2.45,3.3,0,2.1,'door']]);
+  wall(g,'x',4.5,3.6,5.5);
+  wall(g,'z',5.5,0,4.5,[[0.5,4.0,0,2.35,'open']]);
+  wall(g,'z',5.5,4.5,8,[[6.4,7.2,1.7,2.2,'win']]);
+  wall(g,'z',3.6,4.5,8,[[4.95,5.75,0,2.1,'door']]);
+  wall(g,'x',8,0,5.5,[[0.8,2.8,0.9,2.3,'win']]);
+  wall(g,'z',0,-1.6,8);
+  wall(g,'z',5.5,-1.6,0);
+  g.box(0.1,1.0,-1.66,5.4,1.06,-1.54,8,'#2B2F31'); // corrimão do guarda-corpo
+
+  // cozinha: marcenaria, bancada, ilha, geladeira
+  g.box(7.9,0,0.25,8.44,0.86,3.6,0,'#E8E4DC').box(7.86,0.86,0.2,8.44,0.9,3.65,13,'#D9D5CE');
+  g.box(8.1,1.55,0.25,8.44,2.3,3.6,0,'#E8E4DC');
+  g.box(7.96,0.9,1.0,8.4,0.92,1.6,7,'#111214'); // cooktop
+  g.box(6.2,0,1.25,7.0,0.86,2.65,12,'#7A5B40').box(6.15,0.86,1.2,7.05,0.9,2.7,13,'#D9D5CE');
+  g.box(7.7,0,3.72,8.44,1.92,4.44,8,'#B9BDC1');
+  // banheiro: bancada, espelho, vaso, box
+  g.box(5.0,0,4.62,5.44,0.82,5.95,12,'#7A5B40').box(4.98,0.82,4.6,5.44,0.86,5.97,13,'#ECEBE8');
+  g.box(5.42,1.1,4.75,5.44,1.95,5.85,14,'#B8C2C6');
+  g.box(5.05,0,6.25,5.44,0.42,6.75,0,'#F4F4F2').box(5.3,0.42,6.3,5.44,0.8,6.7,0,'#F4F4F2');
+  g.box(3.66,0,7.0,5.44,0.03,7.94,2,'#9EA4A6');
+  g.box(4.93,0,6.97,4.97,2.2,7.01,8,'#9AA3A6').box(3.66,2.16,6.97,4.97,2.2,7.01,8,'#9AA3A6'); // perfil do box (o vidro não é desenhado)
+  // suíte: armário embutido
+  g.box(0.06,0,4.62,0.66,2.45,6.5,12,'#E2DBD0');
+  for (let z=5.08; z<6.5; z+=0.47) g.box(0.66,1.1,z-0.01,0.68,1.3,z+0.01,8,'#2B2F31');
+  // luminárias
+  for (const r of ROOMS){ const L=lamp(r); g.box(L[0]-0.18,H-0.05,L[2]-0.18,L[0]+0.18,H,L[2]+0.18,5,'#FFF4E0'); }
+  return g;
+}
+function lamp(r){ const [x0,z0,x1,z1]=r.rect; return r.id==='sala' ? [2.2,2.6,2.3] : r.id==='suite' ? [1.9,2.6,6.4] : [(x0+x1)/2,2.6,(z0+z1)/2]; }
+
+// Mobília por estilo (home staging virtual). Em produção: render de estúdio ou IA, gerado offline.
+const PAL = {
+  classico:{ sofa:'#B7A68E', cush:'#CBBCA6', wood:'#8A5A3B', rug:'#C9BBA5', tbl:'#8A5A3B', chair:'#6E4A30', seat:'#D8CDBE', bed:'#E9E2D6', duvet:'#D7C9B2', head:'#8A5A3B', pillow:'#F3EEE6', plant:'#4F7A45', pot:'#C26E4B', art:'#2F5D62', metal:'#2A2A2A', stool:'#8A5A3B' },
+  moderno: { sofa:'#4A4F55', cush:'#5B6168', wood:'#3B2B22', rug:'#9AA39C', tbl:'#1F1F1F', chair:'#1F1F1F', seat:'#C9C3B8', bed:'#3D4248', duvet:'#7E8F86', head:'#2E3236', pillow:'#D9D4CB', plant:'#3E6B3A', pot:'#E8E4DC', art:'#B4643C', metal:'#111111', stool:'#1F1F1F' },
+};
+function chair(g,x,z,face,p){
+  const s=0.21; g.box(x-s,0.44,z-s,x+s,0.49,z+s,6,p.seat);
+  for (const [dx,dz] of [[-1,-1],[1,-1],[1,1],[-1,1]]) g.box(x+dx*s*0.85-0.02,0,z+dz*s*0.85-0.02,x+dx*s*0.85+0.02,0.44,z+dz*s*0.85+0.02,12,p.chair);
+  const bx = face==='+x' ? [x-s,x-s+0.04,z-s,z+s] : face==='-x' ? [x+s-0.04,x+s,z-s,z+s] : face==='+z' ? [x-s,x+s,z-s,z-s+0.04] : [x-s,x+s,z+s-0.04,z+s];
+  g.box(bx[0],0.49,bx[2],bx[1],0.92,bx[3],12,p.chair);
+}
+function table(g,x0,z0,x1,z1,h,top,leg){
+  g.box(x0,h-0.04,z0,x1,h,z1,12,top);
+  for (const [x,z] of [[x0+0.06,z0+0.06],[x1-0.06,z0+0.06],[x1-0.06,z1-0.06],[x0+0.06,z1-0.06]]) g.box(x-0.025,0,z-0.025,x+0.025,h-0.04,z+0.025,8,leg);
+}
+function plant(g,x,z,s,p){ g.box(x-0.16*s,0,z-0.16*s,x+0.16*s,0.38*s,z+0.16*s,0,p.pot); g.ball(x,0.38*s+0.42*s,z,0.36*s,0.5*s,0.36*s,9,p.plant,8); }
+function buildFurniture(style){
+  const g=new Geo(); if (style==='vazio') return g;
+  const p=PAL[style], mod = style==='moderno';
+  // sala de estar
+  g.box(0.9,0,1.15,2.95,0.012,3.25,10,p.rug);
+  g.box(2.6,0,1.0,3.5,0.42,3.4,6,p.sofa).box(3.28,0.42,1.0,3.5,0.86,3.4,6,p.sofa);
+  g.box(2.62,0.42,1.18,3.28,0.55,2.19,6,p.cush).box(2.62,0.42,2.21,3.28,0.55,3.22,6,p.cush);
+  g.box(2.6,0.42,1.0,3.5,0.62,1.18,6,p.sofa).box(2.6,0.42,3.22,3.5,0.62,3.4,6,p.sofa);
+  if (mod) g.box(1.7,0,3.4,3.5,0.42,4.0,6,p.sofa).box(1.7,0.42,3.82,3.5,0.86,4.0,6,p.sofa); // chaise do sofa em L
+  table(g,1.55,1.75,2.2,2.65,0.4,p.tbl,p.metal);
+  g.box(0.06,0,1.3,0.48,0.5,3.1,12,p.wood);
+  g.box(0.08,0.95,1.55,0.12,1.72,2.85,7,'#0B0C0E');
+  plant(g,0.45,0.55,1.1,p);
+  if (mod){ g.box(4.6,0,0.3,4.64,1.55,0.34,8,p.metal); g.ball(4.62,1.62,0.32,0.13,0.13,0.13,5,'#FFF1D6',8); }
+  // jantar
+  table(g,3.85,1.6,4.95,2.95,0.76,p.tbl,p.metal);
+  chair(g,3.6,1.95,'+x',p); chair(g,3.6,2.6,'+x',p); chair(g,5.2,1.95,'-x',p); chair(g,5.2,2.6,'-x',p);
+  g.box(4.4,1.2,4.43,5.3,1.85,4.44,0,p.art); // quadro
+  g.box(3.6,1.35,4.43,4.2,1.75,4.44,0,mod?'#D8D2C8':'#C9873E');
+  // cozinha: banquetas
+  for (const z of [1.6,2.3]){ g.box(5.82,0.62,z-0.17,6.12,0.66,z+0.17,6,p.seat); g.box(5.95,0,z-0.03,5.99,0.62,z+0.03,8,p.metal); g.box(5.8,0,z-0.15,6.14,0.02,z+0.15,8,p.metal); }
+  // varanda
+  chair(g,0.9,-0.8,'+x',p); chair(g,2.1,-0.8,'-x',p);
+  table(g,1.3,-1.05,1.7,-0.55,0.5,p.wood,p.metal);
+  plant(g,5.1,-1.25,1.3,p); plant(g,0.4,-1.3,0.8,p);
+  // suíte
+  g.box(1.4,0,6.0,3.54,0.012,7.95,10,p.rug);
+  g.box(1.6,0,6.25,3.54,0.32,7.85,12,p.head).box(1.62,0.32,6.27,3.5,0.55,7.83,6,p.bed);
+  g.box(1.6,0.55,6.24,3.0,0.6,7.86,6,p.duvet);
+  g.box(3.12,0.55,6.4,3.48,0.72,6.95,6,p.pillow).box(3.12,0.55,7.15,3.48,0.72,7.7,6,p.pillow);
+  g.box(3.5,0.32,6.15,3.54,1.25,7.95,12,p.head);
+  g.box(3.12,0,5.78,3.54,0.5,6.18,12,p.wood).ball(3.33,0.68,5.98,0.1,0.18,0.1,5,'#FFF1D6',8);
+  chair(g,0.6,7.45,'+x',p);
+  g.box(1.9,1.35,4.57,3.1,2.05,4.58,0,p.art);
+  // banheiro
+  g.box(4.3,0,4.72,4.9,0.012,5.2,10,p.cush);
+  return g;
+}
+
+/* =====================================================================
+   Shaders
+   ===================================================================== */
+const VS_SCENE = `
+attribute vec3 aP; attribute vec3 aN; attribute vec3 aC; attribute float aM;
+uniform mat4 uVP; varying vec3 vP; varying vec3 vN; varying vec3 vC; varying float vM;
+void main(){ vP=aP; vN=aN; vC=aC; vM=aM; gl_Position=uVP*vec4(aP,1.0); }`;
+
+const FS_SCENE = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec3 vP; varying vec3 vN; varying vec3 vC; varying float vM;
+uniform vec4 uRoom[5];
+uniform vec4 uOpC[5]; uniform vec4 uOpN[5]; uniform vec2 uOpR[5];
+uniform vec4 uSunP[4]; uniform vec2 uSunY[4];
+uniform vec4 uFoot[40];
+uniform vec4 uLamp[5];
+uniform vec3 uCam; uniform vec3 uSun; uniform float uNight; uniform float uExp;
+
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
+float noise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+  return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x), mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),f.x), f.y); }
+float fbm(vec2 p){ return 0.5*noise(p)+0.25*noise(p*2.03)+0.125*noise(p*4.01); }
+
+vec3 sky(vec3 d){
+  float day = 1.0-uNight;
+  float az = atan(d.x, d.z); float e = d.y;
+  vec3 top = mix(vec3(0.004,0.007,0.022), vec3(0.18,0.36,0.78), day);
+  vec3 hor = mix(vec3(0.035,0.035,0.06), vec3(0.72,0.82,0.95), day);
+  vec3 c = mix(hor, top, pow(clamp(e,0.0,1.0), 0.55));
+  c += uNight*vec3(0.14,0.07,0.025)*exp(-abs(e)*10.0);
+  float sd = max(dot(d, uSun), 0.0);
+  c += day*(vec3(1.0,0.92,0.75)*pow(sd,600.0)*30.0 + vec3(1.0,0.85,0.6)*pow(sd,8.0)*0.35);
+  if (e > 0.0){
+    float cl = smoothstep(0.5,0.85, fbm(d.xz/(e+0.18)*1.6));
+    c = mix(c, mix(vec3(0.05,0.05,0.07), vec3(1.0), day), cl*0.65*smoothstep(0.0,0.25,e));
+    c += uNight*step(0.9975, hash(floor(vec2(az*260.0, e*260.0))))*vec3(0.9)*smoothstep(0.05,0.2,e);
+  }
+  // prédios distantes
+  float b1 = floor(az*24.0); float h1 = -0.05 + 0.11*hash(vec2(b1,1.0));
+  if (e < h1){
+    c = mix(mix(hor, vec3(0.42,0.47,0.55), 0.55), vec3(0.012,0.014,0.024), uNight);
+    float w = step(0.82, hash(floor(vec2(az*420.0, e*260.0))));
+    c += uNight*w*vec3(1.0,0.72,0.38)*0.55;
+  }
+  // prédios próximos, com janelas
+  float fz = fract(az*8.0+0.5); float b2 = floor(az*8.0+0.5);
+  float h2 = -0.1 + 0.16*hash(vec2(b2,7.0));
+  if (e < h2 && fz > 0.06 && fz < 0.94){
+    vec3 bc = vec3(0.26,0.29,0.33)*(0.75+0.5*hash(vec2(b2,3.0)));
+    vec2 g = vec2(fz*28.0, e*90.0); vec2 gf = fract(g);
+    float win = step(0.25,gf.x)*step(0.3,gf.y);
+    vec3 dayc = mix(bc, bc*1.35+vec3(0.04,0.06,0.09), win);
+    vec3 ng = vec3(0.008,0.009,0.013) + win*step(0.72, hash(floor(g)+b2))*vec3(1.0,0.75,0.42)*0.9;
+    c = mix(dayc, ng, uNight);
+  }
+  if (e < -0.32) c = mix(vec3(0.16,0.2,0.15), vec3(0.008,0.008,0.01), uNight) * (0.8+0.3*noise(vec2(az*40.0, e*40.0)));
+  return c * mix(1.0, 1.45, day);
+}
+
+float roomOf(vec3 p){
+  float rid = -1.0;
+  for (int i=0;i<5;i++){ vec4 r=uRoom[i];
+    if (rid < 0.0 && p.x>r.x-0.001 && p.x<r.z+0.001 && p.z>r.y-0.001 && p.z<r.w+0.001) rid=float(i); }
+  return rid;
+}
+
+vec3 albedo(float m, vec3 p, vec3 n, vec3 c, float rid){
+  if (m < 0.5){
+    if (abs(rid-4.0)<0.5 && abs(n.y)<0.5 && p.y<2.2){
+      float u = abs(n.x)>0.5 ? p.z : p.x; float row=floor(p.y/0.1);
+      vec2 t = vec2((u+mod(row,2.0)*0.15)/0.3, p.y/0.1); vec2 f=fract(t);
+      float e=min(min(f.x,1.0-f.x)*0.3, min(f.y,1.0-f.y)*0.1);
+      return mix(vec3(0.52), vec3(0.83,0.84,0.84)*(0.97+0.05*hash(floor(t))), smoothstep(0.002,0.004,e));
+    }
+    return c;
+  }
+  if (m < 1.5){
+    float row=floor(p.z/0.19); float off=hash(vec2(row,3.0))*1.2; float seg=floor((p.x+off)/1.2);
+    float h=hash(vec2(row,seg)); float gr=noise(vec2(p.x*2.5, p.z*55.0+h*20.0));
+    vec2 f=vec2(fract((p.x+off)/1.2), fract(p.z/0.19));
+    float e=min(min(f.x,1.0-f.x)*1.2, min(f.y,1.0-f.y)*0.19);
+    return c*(0.82+0.28*h)*(0.88+0.18*gr)*mix(0.55,1.0,smoothstep(0.0,0.003,e));
+  }
+  if (m < 2.5){
+    vec2 t=p.xz/0.6; vec2 f=fract(t); float e=min(min(f.x,1.0-f.x),min(f.y,1.0-f.y))*0.6;
+    return c*(0.95+0.07*hash(floor(t))+0.04*noise(p.xz*9.0))*mix(0.72,1.0,smoothstep(0.0015,0.003,e));
+  }
+  if (m < 6.5 && m > 5.5) return c*(0.92+0.08*noise(vec2(p.x+p.z, p.y)*90.0));
+  if (m < 7.5 && m > 6.5) return c + vec3(0.02)*smoothstep(0.0,1.0,p.y-0.9);
+  if (m < 9.5 && m > 8.5) return c*(0.6+0.6*noise(vec2(p.x+p.y, p.z-p.y)*22.0));
+  if (m < 10.5 && m > 9.5) return c*(0.9+0.12*noise(p.xz*70.0));
+  if (m < 11.5 && m > 10.5){
+    float col=floor(p.x/0.14); float h=hash(vec2(col,9.0)); float f=fract(p.x/0.14);
+    return c*(0.8+0.3*h)*(0.9+0.15*noise(vec2(p.x*40.0,p.z*3.0)))*mix(0.5,1.0,smoothstep(0.0,0.04,min(f,1.0-f)));
+  }
+  if (m < 12.5 && m > 11.5) return c*(0.86+0.2*noise(vec2((p.x+p.z)*3.0, p.y*45.0)));
+  if (m < 13.5 && m > 12.5) return c*(0.85+0.3*hash(floor(p.xz*260.0)));
+  return c;
+}
+
+void main(){
+  float m = floor(vM+0.5);
+  vec3 n = normalize(vN);
+  float rid = roomOf(vP);
+  vec3 alb = albedo(m, vP, n, vC, rid);
+  vec3 col;
+  if (m > 3.5 && m < 4.5){ col = sky(normalize(vP-uCam)); }
+  else if (m > 4.5 && m < 5.5){ col = alb * mix(1.4, 9.0, uNight); }
+  else if (m > 13.5){ col = alb * mix(0.85, 0.25, uNight); }
+  else {
+    float day = 1.0-uNight;
+    vec3 L = mix(vec3(0.09,0.095,0.1), vec3(0.012,0.013,0.02), uNight) * (0.72+0.28*n.y);
+    vec3 skyC = mix(vec3(0.95,0.98,1.05), vec3(0.03,0.035,0.07), uNight);
+    for (int i=0;i<5;i++){
+      if (abs(uOpR[i].x-rid)<0.5 || abs(uOpR[i].y-rid)<0.5){
+        vec3 v = uOpC[i].xyz - vP; float d2 = dot(v,v); vec3 l = v*inversesqrt(d2);
+        float cs = max(dot(n,l),0.0)*0.85+0.15; float cw = abs(dot(uOpN[i].xyz,l));
+        L += skyC * uOpN[i].w * uOpC[i].w * cs * cw / (3.14159*(d2 + 0.35*uOpC[i].w));
+      }
+    }
+    float ndl = dot(n, uSun);
+    if (day > 0.0 && ndl > 0.0){
+      float any = 0.0; float s = 1.0;
+      for (int j=0;j<4;j++){
+        if (abs(uSunP[j].w-rid)<0.5){
+          any = 1.0; float t = (uSunP[j].x - vP.z)/uSun.z;
+          if (t <= 0.0) s = 0.0;
+          vec3 q = vP + uSun*t;
+          float e = min(min(q.x-uSunP[j].y, uSunP[j].z-q.x), min(q.y-uSunY[j].x, uSunY[j].y-q.y));
+          s *= smoothstep(-0.03, 0.03, e);
+        }
+      }
+      L += any*s*ndl*vec3(1.0,0.88,0.72)*3.2*day;
+    }
+    for (int i=0;i<5;i++){
+      if (abs(float(i)-rid)<0.5){
+        vec3 v = uLamp[i].xyz - vP; float d2 = dot(v,v); vec3 l=v*inversesqrt(d2);
+        L += uNight*uLamp[i].w*vec3(1.0,0.74,0.48)*(max(dot(n,l),0.0)/(d2+0.3) + 0.07);
+      }
+    }
+    float ao = 1.0;
+    if (rid > -0.5){
+      vec4 r = rid<0.5?uRoom[0]:rid<1.5?uRoom[1]:rid<2.5?uRoom[2]:rid<3.5?uRoom[3]:uRoom[4];
+      float dx = min(vP.x-r.x, r.z-vP.x)-0.06; float dz = min(vP.z-r.y, r.w-vP.z)-0.06;
+      float sx = smoothstep(0.0,0.5,dx), sz = smoothstep(0.0,0.5,dz);
+      float s0 = smoothstep(0.0,0.5,vP.y), s1 = smoothstep(0.0,0.4,2.7-vP.y);
+      float c1=(1.0-sx)*(1.0-sz), c2=(1.0-min(sx,sz))*(1.0-s0), c3=(1.0-min(sx,sz))*(1.0-s1)*0.6;
+      ao = 1.0-0.42*max(c1,max(c2,c3));
+    }
+    if (n.y > 0.9 && vP.y < 0.03){
+      float occ = 0.0;
+      for (int k=0;k<40;k++){ vec4 f = uFoot[k];
+        if (f.z > f.x){ float ex=max(max(f.x-vP.x, vP.x-f.z),0.0); float ez=max(max(f.y-vP.z, vP.z-f.w),0.0);
+          occ = max(occ, 1.0-smoothstep(0.0,0.3,length(vec2(ex,ez)))); } }
+      ao *= 1.0-0.55*occ;
+    }
+    col = alb * L * ao;
+  }
+  vec3 x = col*uExp; x = (x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14);
+  gl_FragColor = vec4(pow(clamp(x,0.0,1.0), vec3(1.0/2.2)), 1.0);
+}`;
+
+const VS_TRI = `attribute vec2 aP; varying vec2 vQ; void main(){ vQ=aP; gl_Position=vec4(aP,0.0,1.0); }`;
+const FS_VIEW = `
+precision mediump float;
+varying vec2 vQ;
+uniform samplerCube uA; uniform samplerCube uB; uniform sampler2D uE;
+uniform float uMix; uniform float uMode; uniform vec3 uR; uniform vec3 uU; uniform vec3 uF; uniform vec2 uTan;
+void main(){
+  vec3 d = normalize(uF + uR*vQ.x*uTan.x + uU*vQ.y*uTan.y);
+  if (uMode > 0.5){
+    float lon = atan(d.x, -d.z); float lat = asin(clamp(d.y,-1.0,1.0));
+    gl_FragColor = texture2D(uE, vec2(lon/6.2831853+0.5, 0.5-lat/3.14159265));
+  } else gl_FragColor = mix(textureCube(uA,d), textureCube(uB,d), uMix);
+}`;
+const FS_COPY = `precision mediump float; varying vec2 vQ; uniform sampler2D uT; void main(){ gl_FragColor = texture2D(uT, vQ*0.5+0.5); }`;
+
+/* =====================================================================
+   Iluminação: aberturas como fontes de luz do céu, sol entrando pelas
+   aberturas da fachada norte e uma luminária por ambiente à noite.
+   ===================================================================== */
+const SUN = norm([0.42,0.5,-0.76]);
+const OPEN = [ // centro, área, normal, intensidade, ambientes iluminados
+  [[2.75,1.2,0],10.8,[0,0,1],1.15,[0,1]],
+  [[7.0,1.65,0],1.68,[0,0,1],1.6,[1,0]],
+  [[2.75,1.83,-1.6],8.0,[0,0,1],1.2,[2,0]],
+  [[1.8,1.6,8],2.8,[0,0,1],1.25,[3,3]],
+  [[5.5,1.95,6.8],0.4,[1,0,0],2.2,[4,4]],
+];
+const SUNP = [[0,0.5,5.0,0,0,2.4],[-1.6,0.15,5.35,0,1.05,2.6],[0,6.3,7.7,1,1.05,2.25],[-1.6,0.15,5.35,2,1.05,2.6]];
+
+/* =====================================================================
+   WebGL: assar um cubemap por ambiente e exibir.
+   ===================================================================== */
+const params = new URLSearchParams(location.search);
+const stage = $('#stage'), cv = $('#gl'), ov = $('#ov'), octx = ov.getContext('2d');
+const gl = cv.getContext('webgl', { antialias:false, alpha:false, preserveDrawingBuffer:false, powerPreference:'high-performance' });
+let R = null; // estado do renderizador
+
+function prog(vs, fs){
+  const mk=(t,s)=>{ const sh=gl.createShader(t); gl.shaderSource(sh,s); gl.compileShader(sh); if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
+  const p=gl.createProgram(); gl.attachShader(p,mk(gl.VERTEX_SHADER,vs)); gl.attachShader(p,mk(gl.FRAGMENT_SHADER,fs)); gl.linkProgram(p);
+  if(!gl.getProgramParameter(p,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u={}; const n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);
+  for (let i=0;i<n;i++){ const nm=gl.getActiveUniform(p,i).name.replace('[0]',''); u[nm]=gl.getUniformLocation(p,nm); }
+  return {p,u};
+}
+function buf(arr){ const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(arr),gl.STATIC_DRAW); return {b,n:arr.length/10}; }
+function tex2D(w,h){ const t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null); setTexParams(gl.TEXTURE_2D); return t; }
+function setTexParams(target){ gl.texParameteri(target,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(target,gl.TEXTURE_MAG_FILTER,gl.LINEAR); gl.texParameteri(target,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(target,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE); }
+function fbo(w,h){ const f=gl.createFramebuffer(), t=tex2D(w,h), d=gl.createRenderbuffer();
+  gl.bindRenderbuffer(gl.RENDERBUFFER,d); gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT16,w,h);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,f); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0); gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,d);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null); return {f,t,d,w,h}; }
+
+function initGL(){
+  const scene=prog(VS_SCENE,FS_SCENE), view=prog(VS_TRI,FS_VIEW), copy=prog(VS_TRI,FS_COPY);
+  const tri=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,tri); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  const maxCube=gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE), maxTex=Math.min(gl.getParameter(gl.MAX_TEXTURE_SIZE), gl.getParameter(gl.MAX_RENDERBUFFER_SIZE));
+  let S = +params.get('q') || (Math.min(screen.width,screen.height)*(devicePixelRatio||1) > 900 ? 1024 : 1024);
+  S = Math.min(S, maxCube, maxTex/2);
+  const st = buildStatic();
+  R = { scene, view, copy, tri, S, maxTex, ss: fbo(S*2,S*2), cubeF: gl.createFramebuffer(),
+        stat: buf(st.v), statFoot: st.foot, furn: null, furnFoot: [], furnStyle: null, cache: new Map(), eq: null };
+}
+function setFurniture(style){
+  if (R.furnStyle === style) return;
+  if (R.furn) gl.deleteBuffer(R.furn.b);
+  const g=buildFurniture(style); R.furn = g.v.length ? buf(g.v) : null; R.furnFoot=g.foot; R.furnStyle=style;
+}
+function drawScene(vp, eye, night){
+  const {p,u}=R.scene; gl.useProgram(p);
+  gl.uniformMatrix4fv(u.uVP,false,vp); gl.uniform3fv(u.uCam,eye); gl.uniform3fv(u.uSun,SUN);
+  gl.uniform1f(u.uNight,night?1:0); gl.uniform1f(u.uExp,night?1.25:1.4);
+  gl.uniform4fv(u.uRoom, ROOMS.flatMap(r=>r.rect));
+  gl.uniform4fv(u.uOpC, OPEN.flatMap(o=>[...o[0],o[1]])); gl.uniform4fv(u.uOpN, OPEN.flatMap(o=>[...o[2],o[3]])); gl.uniform2fv(u.uOpR, OPEN.flatMap(o=>o[4]));
+  gl.uniform4fv(u.uSunP, SUNP.flatMap(s=>[s[0],s[1],s[2],s[3]])); gl.uniform2fv(u.uSunY, SUNP.flatMap(s=>[s[4],s[5]]));
+  gl.uniform4fv(u.uLamp, ROOMS.flatMap(r=>[...lamp(r), r.id==='banho'?1.6:r.id==='varanda'?1.4:2.4]));
+  const foot=[...R.statFoot,...R.furnFoot].sort((a,b)=>(b[2]-b[0])*(b[3]-b[1])-(a[2]-a[0])*(a[3]-a[1])).slice(0,40);
+  while (foot.length<40) foot.push([0,0,0,0]);
+  gl.uniform4fv(u.uFoot, foot.flat());
+  gl.enable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE);
+  for (const b of [R.stat, R.furn]) if (b){
+    gl.bindBuffer(gl.ARRAY_BUFFER,b.b);
+    const loc=n=>gl.getAttribLocation(p,n), at=[[loc('aP'),3,0],[loc('aN'),3,12],[loc('aC'),3,24],[loc('aM'),1,36]];
+    for (const [l,s,o] of at){ gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l,s,gl.FLOAT,false,40,o); }
+    gl.drawArrays(gl.TRIANGLES,0,b.n);
+  }
+}
+function drawTri(p){ gl.bindBuffer(gl.ARRAY_BUFFER,R.tri); const l=gl.getAttribLocation(p,'aP'); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l,2,gl.FLOAT,false,0,0); gl.disable(gl.DEPTH_TEST); gl.drawArrays(gl.TRIANGLES,0,3); }
+
+const FACES = [[[1,0,0],[0,-1,0]],[[-1,0,0],[0,-1,0]],[[0,1,0],[0,0,1]],[[0,-1,0],[0,0,-1]],[[0,0,1],[0,-1,0]],[[0,0,-1],[0,-1,0]]];
+// Gera o "panorama" do ambiente. Na produção este passo não existe: o cubemap vem dos tiles da foto 360°.
+function bake(ri, style, night){
+  const key=`${ri}|${style}|${night?1:0}`;
+  if (R.cache.has(key)){ const t=R.cache.get(key); R.cache.delete(key); R.cache.set(key,t); return t; }
+  setFurniture(style);
+  const S=R.S, eye=ROOMS[ri].node, P=M.persp(Math.PI/2,1,0.03,300);
+  const cube=gl.createTexture(); gl.bindTexture(gl.TEXTURE_CUBE_MAP,cube);
+  for (let i=0;i<6;i++) gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X+i,0,gl.RGBA,S,S,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+  setTexParams(gl.TEXTURE_CUBE_MAP);
+  for (let i=0;i<6;i++){
+    const [dir,up]=FACES[i];
+    gl.bindFramebuffer(gl.FRAMEBUFFER,R.ss.f); gl.viewport(0,0,S*2,S*2); gl.clearColor(0,0,0,1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+    drawScene(M.mul(P, M.look(eye, add(eye,dir), up)), eye, night);
+    // reduz 2x: supersampling para tirar o serrilhado das arestas
+    gl.bindFramebuffer(gl.FRAMEBUFFER,R.cubeF); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_CUBE_MAP_POSITIVE_X+i,cube,0);
+    gl.viewport(0,0,S,S); gl.useProgram(R.copy.p); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,R.ss.t); gl.uniform1i(R.copy.u.uT,0);
+    drawTri(R.copy.p);
+  }
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  R.cache.set(key,cube);
+  // cubemap ocupa ~6*S*S*4 bytes; guarda só os 3 mais recentes para caber em celular modesto
+  while (R.cache.size>3){ const [k,t]=R.cache.entries().next().value; if (t===V.texA||t===V.texB) { R.cache.delete(k); R.cache.set(k,t); if (R.cache.size<=3) break; continue; } R.cache.delete(k); gl.deleteTexture(t); }
+  return cube;
+}
+// Foto do ambiente para os cards da página (o que na produção é a capa do ambiente).
+function snapshot(ri, style){
+  setFurniture(style);
+  const w=640,h=480, f=R.thumbF || (R.thumbF=fbo(w,h)), r=ROOMS[ri], eye=r.node, b=basis(r.thumbYaw,-0.08);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,f.f); gl.viewport(0,0,w,h); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  drawScene(M.mul(M.persp(1.15,w/h,0.03,300), M.look(eye, add(eye,b.f), [0,1,0])), eye, false);
+  const px=new Uint8Array(w*h*4); gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,px); gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d'), img=x.createImageData(w,h);
+  for (let y=0;y<h;y++) img.data.set(px.subarray((h-1-y)*w*4,(h-y)*w*4), y*w*4);
+  x.putImageData(img,0,0);
+  const o=document.createElement('canvas'); o.width=320; o.height=240; const ox=o.getContext('2d'); ox.imageSmoothingQuality='high'; ox.drawImage(c,0,0,320,240);
+  return o.toDataURL('image/jpeg',0.82);
+}
+
+/* =====================================================================
+   Visualizador
+   ===================================================================== */
+const V = { ri:0, yaw:ROOMS[0].yaw, pitch:-0.05, fov:1.35, style:'classico', night:false, measures:false, mode:'cube',
+            texA:null, texB:null, mix:0, anim:null, vy:0, vp:0, immersive:false, gyro:false, gyroOff:0, ready:false };
+let raf=0, lastT=0, W=1, Hh=1, dpr=1, heroVisible=true;
+const request = () => { if (!raf) raf=requestAnimationFrame(frame); };
+
+function resize(){
+  dpr=Math.min(devicePixelRatio||1, 2); W=stage.clientWidth; Hh=stage.clientHeight;
+  for (const c of [cv,ov]){ c.width=Math.round(W*dpr); c.height=Math.round(Hh*dpr); }
+  V.fov = clamp(V.fov, fovMin(), fovMax()); request();
+}
+const fovMin = () => 0.55, fovMax = () => (W<Hh ? 1.75 : 1.45);
+
+function frame(t){
+  raf=0; const dt=Math.min(64, t-(lastT||t)); lastT=t; let more=false;
+  if (V.anim){ const a=V.anim, k=clamp((t-a.t0)/a.dur,0,1), e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+    V.mix=e; V.fov=a.fov0-0.32*Math.sin(Math.PI*k); V.yaw=a.yaw0+(a.yaw1-a.yaw0)*e;
+    if (k>=1){ V.texA=V.texB; V.mix=0; V.fov=a.fov0; V.anim=null; stage.classList.remove('moving'); buildPins(); } more=true; }
+  if (!V.drag && (Math.abs(V.vy)>1e-5 || Math.abs(V.vp)>1e-5)){ V.yaw+=V.vy*dt; V.pitch=clamp(V.pitch+V.vp*dt,-1.45,1.45); V.vy*=Math.pow(0.992,dt); V.vp*=Math.pow(0.992,dt); if (Math.abs(V.vy)<2e-5) V.vy=0; if (Math.abs(V.vp)<2e-5) V.vp=0; more=true; }
+  if (!V.immersive && heroVisible && !RM.matches && !V.drag && V.ready){ V.yaw+=dt*0.00007; more=true; }
+  if (V.gyro && V.gyroQ){ const g=gyroAngles(); V.yaw=lerpAng(V.yaw, g.yaw+V.gyroOff, 0.35); V.pitch=V.pitch+(g.pitch-V.pitch)*0.35; more=true; }
+  draw(); if (V.immersive) placePins(); updateMap(); track(t);
+  if (more) request();
+}
+function lerpAng(a,b,k){ let d=((b-a+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI; return a+d*k; }
+function draw(){
+  if (!R) return;
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,cv.width,cv.height);
+  const {p,u}=R.view, b=basis(V.yaw,V.pitch), th=Math.tan(V.fov/2);
+  gl.useProgram(p); gl.uniform3fv(u.uR,b.r); gl.uniform3fv(u.uU,b.u); gl.uniform3fv(u.uF,b.f); gl.uniform2f(u.uTan, th*W/Hh, th);
+  gl.uniform1f(u.uMode, V.mode==='eq'?1:0); gl.uniform1f(u.uMix, V.mix);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_CUBE_MAP, V.texA); gl.uniform1i(u.uA,0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_CUBE_MAP, V.texB||V.texA); gl.uniform1i(u.uB,1);
+  gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, R.eq||null); gl.uniform1i(u.uE,2);
+  if (V.texA || V.mode==='eq') drawTri(p);
+  drawMeasures(b, th);
+}
+// Mundo -> tela (px CSS). Coordenadas relativas ao ponto onde a "foto" foi tirada.
+function project(p, b, th){
+  const n=ROOMS[V.ri].node, d=sub(p,n), z=dot(d,b.f); if (z<0.05) return null;
+  const x=dot(d,b.r)/(z*th*W/Hh), y=dot(d,b.u)/(z*th);
+  return [(x+1)/2*W, (1-y)/2*Hh];
+}
+
+/* ---------- marcadores (andar, informação, cotas) ---------- */
+const pinsEl=$('#pins'); let pins=[];
+function buildPins(){
+  pinsEl.textContent=''; pins=[]; if (V.mode==='eq') return;
+  const r=ROOMS[V.ri];
+  for (const [to,pos] of LINKS[r.id]){
+    const ti=ROOMS.findIndex(x=>x.id===to), el=document.createElement('button');
+    el.type='button'; el.className='pin go'; el.setAttribute('aria-label','Ir para '+ROOMS[ti].nome);
+    el.innerHTML=`<span class="ring"><svg class="i" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span><span class="lb">${ROOMS[ti].curto}</span>`;
+    el.addEventListener('click', e=>{ e.stopPropagation(); goTo(ti); });
+    pinsEl.append(el); pins.push({el,pos});
+  }
+  for (const [pos,text] of INFO[r.id]){
+    const el=document.createElement('button'); el.type='button'; el.className='pin info-p'; el.setAttribute('aria-expanded','false');
+    el.innerHTML=`<i aria-hidden="true">i</i><span>${text}</span>`; el.setAttribute('aria-label',text);
+    el.addEventListener('click', e=>{ e.stopPropagation(); const o=el.getAttribute('aria-expanded')==='true'; el.setAttribute('aria-expanded', String(!o)); if(!o) TR.infos.add(text); });
+    pinsEl.append(el); pins.push({el,pos,info:true});
+  }
+  for (const d of dimLabels()){ const el=document.createElement('span'); el.className='pin dim'; el.textContent=d.t; pinsEl.append(el); pins.push({el,pos:d.p}); }
+  $('#area').innerHTML = (()=>{ const [x0,z0,x1,z1]=r.rect, w=x1-x0-T, l=z1-z0-T; return `Área <b>${(w*l).toFixed(1).replace('.',',')} m²</b> · pé-direito <b>${fmtM(H)}</b>`; })();
+  placePins();
+}
+function placePins(){
+  const b=basis(V.yaw,V.pitch), th=Math.tan(V.fov/2);
+  for (const p of pins){
+    const s=project(p.pos,b,th);
+    if (!s || s[0]<-80 || s[0]>W+80 || s[1]<-80 || s[1]>Hh+80){ p.el.style.visibility='hidden'; continue; }
+    p.el.style.visibility='';
+    p.el.style.transform = p.info ? `translate3d(${s[0]-11}px,${s[1]-22}px,0)` : `translate3d(${s[0]}px,${s[1]}px,0) translate(-50%,-50%)`;
+  }
+}
+function dimLabels(){
+  const [x0,z0,x1,z1]=ROOMS[V.ri].rect, i=T/2, w=x1-x0-T, l=z1-z0-T;
+  return [{p:[(x0+x1)/2,0.02,z0+i],t:fmtM(w)},{p:[(x0+x1)/2,0.02,z1-i],t:fmtM(w)},{p:[x0+i,0.02,(z0+z1)/2],t:fmtM(l)},{p:[x1-i,0.02,(z0+z1)/2],t:fmtM(l)},
+          {p:[x0+i,H/2,z0+i],t:fmtM(H)},{p:[x1-i,H/2,z1-i],t:fmtM(H)}];
+}
+function drawMeasures(b, th){
+  octx.setTransform(dpr,0,0,dpr,0,0); octx.clearRect(0,0,W,Hh);
+  if (!V.measures || V.mode==='eq' || V.anim) return;
+  const [x0,z0,x1,z1]=ROOMS[V.ri].rect, i=T/2+0.01, y=0.015;
+  const segs=[[[x0+i,y,z0+i],[x1-i,y,z0+i]],[[x1-i,y,z0+i],[x1-i,y,z1-i]],[[x1-i,y,z1-i],[x0+i,y,z1-i]],[[x0+i,y,z1-i],[x0+i,y,z0+i]],
+              [[x0+i,0,z0+i],[x0+i,H,z0+i]],[[x1-i,0,z1-i],[x1-i,H,z1-i]],[[x1-i,0,z0+i],[x1-i,H,z0+i]],[[x0+i,0,z1-i],[x0+i,H,z1-i]]];
+  octx.lineWidth=2; octx.strokeStyle='#FFD54A'; octx.setLineDash([]);
+  for (const [a,c] of segs){
+    octx.beginPath(); let pen=false;
+    for (let k=0;k<=40;k++){ const t=k/40, s=project([a[0]+(c[0]-a[0])*t,a[1]+(c[1]-a[1])*t,a[2]+(c[2]-a[2])*t],b,th);
+      if (s){ pen ? octx.lineTo(s[0],s[1]) : octx.moveTo(s[0],s[1]); pen=true; } else pen=false; }
+    octx.stroke();
+  }
+}
+
+/* ---------- planta (minimapa) ---------- */
+const mapSvg=$('#map-svg');
+function buildMap(){
+  const ns='http://www.w3.org/2000/svg';
+  ROOMS.forEach((r,i)=>{ const [x0,z0,x1,z1]=r.rect, el=document.createElementNS(ns,'rect');
+    Object.entries({x:x0,y:z0,width:x1-x0,height:z1-z0,class:'rm','data-i':i,tabindex:-1}).forEach(([k,v])=>el.setAttribute(k,v));
+    const tt=document.createElementNS(ns,'title'); tt.textContent=r.nome; el.append(tt);
+    el.addEventListener('click', e=>{ e.stopPropagation(); if (i!==V.ri) goTo(i); });
+    mapSvg.append(el);
+    const tx=document.createElementNS(ns,'text'); tx.setAttribute('x',(x0+x1)/2); tx.setAttribute('y',(z0+z1)/2+0.15); tx.setAttribute('text-anchor','middle'); tx.textContent=r.curto; mapSvg.append(tx);
+  });
+  const g=document.createElementNS(ns,'g'); g.id='me';
+  g.innerHTML='<path class="cone" d="M0 0 L-1.6 -2.6 A3 3 0 0 1 1.6 -2.6 Z"/><circle class="me" r=".22"/>';
+  mapSvg.append(g);
+}
+function updateMap(){
+  const n=ROOMS[V.ri].node, g=$('#me'); if (!g) return;
+  g.setAttribute('transform',`translate(${n[0]} ${n[2]}) rotate(${V.yaw*180/Math.PI})`);
+  $$('.map .rm').forEach((el,i)=>el.classList.toggle('on', i===V.ri));
+}
+$('#map-x').addEventListener('click', e=>{ e.stopPropagation(); const m=$('#map'), big=!m.classList.contains('big'); m.classList.toggle('big',big); e.currentTarget.textContent=big?'reduzir':'ampliar'; e.currentTarget.setAttribute('aria-expanded',String(big)); });
+
+/* ---------- navegação entre ambientes ---------- */
+function goTo(ri){
+  if (V.anim || V.mode==='eq') return;
+  const tex=bake(ri, V.style, V.night);
+  // olha para onde a pessoa "andou": direção do marcador, depois mantém a orientação
+  // gira para o enquadramento de capa do ambiente enquanto funde: chegar de frente para a parede desorienta
+  const yaw1 = V.yaw + ((((ROOMS[ri].yaw - V.yaw + Math.PI)%(2*Math.PI))+2*Math.PI)%(2*Math.PI) - Math.PI);
+  V.ri=ri; enterRoom(ri); setWhere(); stage.classList.add('moving');
+  if (RM.matches){ V.texA=tex; V.yaw=yaw1; stage.classList.remove('moving'); buildPins(); request(); return; }
+  V.pitch=-0.05; V.texB=tex; V.anim={t0:performance.now(), dur:700, fov0:V.fov, yaw0:V.yaw, yaw1}; request();
+}
+function setWhere(){ const r=ROOMS[V.ri]; $('#w-name').textContent = V.mode==='eq' ? 'Sua foto 360°' : r.nome; $('#w-sub').textContent = V.mode==='eq' ? 'Pré-visualização local, não enviada' : `${V.ri+1} de ${ROOMS.length} ambientes · ${STYLES[V.style]}${V.night?' · noite':''}`; }
+function rebake(){ V.texA=bake(V.ri, V.style, V.night); V.texB=null; setWhere(); request(); }
+
+$$('[data-style]').forEach(b=>b.addEventListener('click', e=>{ e.stopPropagation(); V.style=b.dataset.style; TR.styles.add(V.style); $$('[data-style]').forEach(x=>x.setAttribute('aria-pressed', String(x===b))); rebake(); }));
+$('#t-night').addEventListener('click', e=>{ e.stopPropagation(); V.night=!V.night; if (V.night) TR.night=true; e.currentTarget.setAttribute('aria-pressed',String(V.night)); rebake(); });
+$('#t-dim').addEventListener('click', e=>{ e.stopPropagation(); V.measures=!V.measures; if (V.measures) TR.measures=true; e.currentTarget.setAttribute('aria-pressed',String(V.measures)); stage.classList.toggle('measuring',V.measures); request(); });
+
+/* ---------- entrar e sair do tour ---------- */
+function enterImmersive(ri){
+  if (!R) return;
+  if (ri!=null && ri!==V.ri && V.mode==='cube'){ V.ri=ri; V.yaw=ROOMS[ri].yaw; V.pitch=-0.05; V.texA=bake(ri,V.style,V.night); }
+  V.immersive=true; stage.classList.add('immersive'); document.body.classList.add('locked');
+  history.pushState({tour:1},''); TR.since=performance.now(); if (V.mode==='cube') enterRoom(V.ri, true);
+  // retrato: campo vertical mais aberto, como os visualizadores 360 de celular
+  setWhere(); resize(); V.fov = W<Hh ? 1.6 : 1.3; buildPins();
+  if (!enterImmersive.seen){ enterImmersive.seen=true; setTimeout(()=>$('#coach').classList.add('gone'), 3800); } else $('#coach').classList.add('gone');
+  $('#exit').focus({preventScroll:true});
+}
+function exitImmersive(fromPop){
+  if (!V.immersive) return;
+  flush(); TR.since=0; V.immersive=false; setGyro(false);
+  stage.classList.remove('immersive','measuring'); V.measures=false; $('#t-dim').setAttribute('aria-pressed','false');
+  document.body.classList.remove('locked'); pinsEl.textContent=''; pins=[];
+  if (V.mode==='eq'){ V.mode='cube'; stage.classList.remove('eq'); }
+  if (!fromPop && history.state && history.state.tour) history.back();
+  resize(); V.fov=1.3; $('#enter').focus({preventScroll:true});
+}
+addEventListener('popstate', ()=>{ if (V.immersive) exitImmersive(true); });
+$('#exit').addEventListener('click', e=>{ e.stopPropagation(); exitImmersive(); });
+$('#enter').addEventListener('click', e=>{ e.stopPropagation(); enterImmersive(); });
+addEventListener('keydown', e=>{
+  if (!V.immersive) return;
+  if (e.key==='Escape' && !$('#dlg').open) exitImmersive();
+  const k={ArrowLeft:[-0.08,0],ArrowRight:[0.08,0],ArrowUp:[0,0.06],ArrowDown:[0,-0.06]}[e.key];
+  if (k && !(e.target instanceof HTMLButtonElement && e.target.closest('.seg'))){ V.yaw+=k[0]; V.pitch=clamp(V.pitch+k[1],-1.45,1.45); request(); }
+});
+
+/* ---------- arrastar, pinça, roda ---------- */
+const ptr=new Map(); let pinch=null, tap=null;
+stage.addEventListener('pointerdown', e=>{
+  if (e.target.closest('button,.map,.hud-bot,.hud-top')) return;
+  ptr.set(e.pointerId,{x:e.clientX,y:e.clientY,t:performance.now()}); stage.setPointerCapture(e.pointerId);
+  V.drag=true; V.vy=V.vp=0; tap = ptr.size===1 ? {x:e.clientX,y:e.clientY,t:performance.now()} : null;
+  if (ptr.size===2){ const [a,b]=[...ptr.values()]; pinch={d:Math.hypot(a.x-b.x,a.y-b.y), fov:V.fov}; }
+});
+stage.addEventListener('pointermove', e=>{
+  const p=ptr.get(e.pointerId); if (!p) return;
+  const now=performance.now(), dx=e.clientX-p.x, dy=e.clientY-p.y, dt=Math.max(1,now-p.t);
+  p.x=e.clientX; p.y=e.clientY; p.t=now;
+  if (ptr.size===2 && pinch){ const [a,b]=[...ptr.values()]; V.fov=clamp(pinch.fov*pinch.d/Math.max(20,Math.hypot(a.x-b.x,a.y-b.y)), fovMin(), fovMax()); request(); return; }
+  const k=V.fov/Hh, ky = V.immersive ? k : 0; // na prévia, só gira: o gesto vertical rola a página
+  V.yaw-=dx*k; V.pitch=clamp(V.pitch+dy*ky,-1.45,1.45);
+  if (V.gyro) V.gyroOff-=dx*k;
+  V.vy=-dx*k/dt; V.vp=dy*ky/dt; request();
+});
+const up=e=>{
+  if (!ptr.has(e.pointerId)) return; ptr.delete(e.pointerId); if (ptr.size<2) pinch=null;
+  if (!ptr.size){ V.drag=false; if (tap && performance.now()-tap.t<300 && Math.hypot(e.clientX-tap.x,e.clientY-tap.y)<8){ V.vy=V.vp=0; if (!V.immersive) enterImmersive(); } tap=null;
+    if (RM.matches){ V.vy=V.vp=0; } request(); }
+};
+stage.addEventListener('pointerup',up); stage.addEventListener('pointercancel',up);
+stage.addEventListener('wheel', e=>{ if (!V.immersive) return; e.preventDefault(); V.fov=clamp(V.fov+e.deltaY*0.0012, fovMin(), fovMax()); request(); }, {passive:false});
+
+/* ---------- giroscópio ---------- */
+let orient=null;
+function gyroAngles(){
+  const q0=V.gyroQ, D=Math.PI/180, x=q0.b*D, y=q0.a*D, z=-q0.g*D;
+  const c1=Math.cos(x/2), c2=Math.cos(y/2), c3=Math.cos(z/2), s1=Math.sin(x/2), s2=Math.sin(y/2), s3=Math.sin(z/2);
+  let q=[s1*c2*c3+c1*s2*s3, c1*s2*c3-s1*c2*s3, c1*c2*s3-s1*s2*c3, c1*c2*c3+s1*s2*s3]; // YXZ
+  const mulq=(a,b)=>[a[3]*b[0]+a[0]*b[3]+a[1]*b[2]-a[2]*b[1], a[3]*b[1]-a[0]*b[2]+a[1]*b[3]+a[2]*b[0], a[3]*b[2]+a[0]*b[1]-a[1]*b[0]+a[2]*b[3], a[3]*b[3]-a[0]*b[0]-a[1]*b[1]-a[2]*b[2]];
+  q=mulq(q,[-Math.SQRT1_2,0,0,Math.SQRT1_2]);
+  const so=-(screen.orientation?.angle ?? window.orientation ?? 0)*D; q=mulq(q,[0,0,Math.sin(so/2),Math.cos(so/2)]);
+  const v=[0,0,-1], [qx,qy,qz,qw]=q, ix=qw*v[0]+qy*v[2]-qz*v[1], iy=qw*v[1]+qz*v[0]-qx*v[2], iz=qw*v[2]+qx*v[1]-qy*v[0], iw=-qx*v[0]-qy*v[1]-qz*v[2];
+  const f=[ix*qw+iw*-qx+iy*-qz-iz*-qy, iy*qw+iw*-qy+iz*-qx-ix*-qz, iz*qw+iw*-qz+ix*-qy-iy*-qx];
+  return {yaw:Math.atan2(f[0],-f[2]), pitch:Math.asin(clamp(f[1],-1,1))};
+}
+function onOrient(e){ if (e.alpha==null) return; const first=!V.gyroQ; V.gyroQ={a:e.alpha,b:e.beta,g:e.gamma}; if (first){ V.gyroOff=V.yaw-gyroAngles().yaw; } request(); }
+async function setGyro(on){
+  if (on){
+    try { if (typeof DeviceOrientationEvent!=='undefined' && DeviceOrientationEvent.requestPermission){ if (await DeviceOrientationEvent.requestPermission()!=='granted') throw 0; } }
+    catch { toast('Sem permissão para o sensor de movimento. Continue arrastando com o dedo.'); return; }
+    V.gyro=true; V.gyroQ=null; TR.gyro=true; addEventListener('deviceorientation',onOrient);
+  } else { V.gyro=false; removeEventListener('deviceorientation',onOrient); }
+  $('#gyro').setAttribute('aria-pressed',String(V.gyro));
+}
+if (matchMedia('(pointer: coarse)').matches && 'DeviceOrientationEvent' in window) $('#gyro').hidden=false;
+$('#gyro').addEventListener('click', e=>{ e.stopPropagation(); setGyro(!V.gyro); });
+
+/* =====================================================================
+   Engajamento no tour -> touchpoint do lead
+   ===================================================================== */
+const TR = { visits:{}, ms:{}, cur:null, since:0, styles:new Set(['classico']), night:false, measures:false, gyro:false, infos:new Set(), seq:[] };
+function flush(now=performance.now()){ if (TR.cur && TR.since && !document.hidden){ TR.ms[TR.cur]=(TR.ms[TR.cur]||0)+now-TR.since; } if (TR.since) TR.since=now; }
+function enterRoom(ri, resume){ const id=ROOMS[ri].id; if (resume && TR.cur===id) return; flush(); TR.cur=id; TR.visits[id]=(TR.visits[id]||0)+1; TR.seq.push(id); if (!TR.since) TR.since=performance.now(); }
+function track(){ /* o tempo é somado em flush(); aqui não há trabalho por quadro */ }
+document.addEventListener('visibilitychange', ()=>{ if (document.hidden) flush(); else if (TR.since) TR.since=performance.now(); });
+function engagement(){
+  flush(); const sec=Math.round(Object.values(TR.ms).reduce((a,b)=>a+b,0)/1000);
+  const rooms=Object.keys(TR.visits), top=Object.entries(TR.ms).sort((a,b)=>b[1]-a[1])[0];
+  const rev=Object.entries(TR.visits).filter(([,n])=>n>1).sort((a,b)=>b[1]-a[1])[0];
+  return { durationSec:sec, roomsViewed:rooms, mostViewedRoom: top?top[0]:null,
+    timeByRoomSec:Object.fromEntries(Object.entries(TR.ms).map(([k,v])=>[k,Math.round(v/1000)])),
+    revisits: rev ? {room:rev[0], count:rev[1]-1} : null,
+    staging:[...TR.styles], usedMeasures:TR.measures, usedNightView:TR.night, usedGyro:TR.gyro, infoOpened:[...TR.infos] };
+}
+function interest(e){
+  const n=e.roomsViewed.length, rv=e.revisits?e.revisits.count:0;
+  if ((e.durationSec>=90 && n>=4) || (rv>=2 && e.durationSec>=60)) return 'alto';
+  if (e.durationSec>=30 || n>=3) return 'medio';
+  return 'baixo';
+}
+const roomName = id => (ROOMS.find(r=>r.id===id)||{}).curto || id;
+const fmtDur = s => s>=60 ? `${Math.floor(s/60)} min ${String(s%60).padStart(2,'0')} s` : `${s} s`;
+
+/* ---------- CTAs ---------- */
+const dlg=$('#dlg'); let ctaFrom='page';
+$$('[data-cta]').forEach(b=>b.addEventListener('click', e=>{
+  e.stopPropagation(); ctaFrom = V.immersive ? 'tour' : 'page';
+  if (b.dataset.cta==='visita'){ $('#e-name').textContent=''; $('#e-phone').textContent=''; dlg.showModal(); $('#f-name').focus(); }
+  else whatsapp();
+}));
+$('#f-cancel').addEventListener('click', ()=>dlg.close());
+dlg.addEventListener('click', e=>{ if (e.target===dlg) dlg.close(); });
+$('#form').addEventListener('submit', e=>{
+  e.preventDefault();
+  const name=$('#f-name').value.trim(), phone=$('#f-phone').value.trim(), digits=phone.replace(/\D/g,'');
+  $('#e-name').textContent = name ? '' : 'Informe seu nome.';
+  $('#e-phone').textContent = digits.length>=10 && digits.length<=13 ? '' : 'Informe um WhatsApp com DDD, por exemplo (11) 9 8765-4321.';
+  if (!name || $('#e-phone').textContent){ (name?$('#f-phone'):$('#f-name')).focus(); return; }
+  const when=new FormData(e.target).get('when'); dlg.close();
+  showResult({ connector:'site', name, phone, when });
+});
+function whatsapp(){
+  const e=engagement(), fav=e.mostViewedRoom ? ` Gostei muito da ${roomName(e.mostViewedRoom).toLowerCase()}.` : '';
+  const msg=`Olá! Vi o tour 360° do AP1842 (Vila Mariana).${fav} Ainda está disponível?`;
+  toast(`No site real abriria o WhatsApp da imobiliária com: "${msg}"`, 4200);
+  setTimeout(()=>showResult({ connector:'whatsapp', name:null, phone:'+55 11 9xxxx-xxxx (vem do WhatsApp)', msg }), 900);
+}
+
+function showResult(d){
+  const e=engagement(), heat=interest(e), now=new Date();
+  if (V.immersive) exitImmersive();
+  const payload={
+    schemaVersion:1, connector:d.connector, receivedAt:now.toISOString(),
+    contact:{ ...(d.name?{name:d.name}:{}), phones:[d.phone], emails:[] },
+    message: d.msg || `Quero agendar uma visita. Preferência: ${d.when}.`,
+    purposeHint:'rent',
+    property:{ internalCode:'AP1842', url:location.origin+location.pathname },
+    tracking:{ landingUrl:location.href.split('?')[0], referrer:document.referrer||undefined, formId: d.connector==='site' ? 'agendar-visita-'+ctaFrom : undefined },
+    consent: d.connector==='site' ? { granted:true, text:'Autorizo o contato da imobiliária sobre este imóvel.', at:now.toISOString() } : undefined,
+    engagement:{ tour:e },
+    rawRef:'inb_'+Math.random().toString(36).slice(2,10)
+  };
+  $('#r-json').textContent=JSON.stringify(payload,null,2);
+  $('#r-name').textContent = d.name || 'Contato via WhatsApp';
+  $('#r-sub').textContent = `AP1842 · Locação · ${d.connector==='site'?'Site':'WhatsApp (clique rastreado)'}`;
+  const h=$('#r-heat'); h.className='heat '+heat; h.textContent='Interesse '+{alto:'alto',medio:'médio',baixo:'baixo'}[heat];
+  $('#r-kv').innerHTML = [
+    [fmtDur(e.durationSec),'no tour'],[`${e.roomsViewed.length}/${ROOMS.length}`,'ambientes vistos'],
+    [e.mostViewedRoom?roomName(e.mostViewedRoom):'nenhum','onde mais ficou'],[e.revisits?`${e.revisits.count}×`:'0','voltas ao mesmo ambiente'],
+  ].map(([b,s])=>`<div><b>${b}</b><span>${s}</span></div>`).join('');
+  const hh=now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const tourLine = e.durationSec ? `Viu o tour 360°: ${fmtDur(e.durationSec)}, ${e.roomsViewed.map(roomName).join(', ')}${e.revisits?` · voltou ${e.revisits.count}× à ${roomName(e.revisits.room).toLowerCase()}`:''}${e.staging.length>1?` · trocou a mobília (${e.staging.map(s=>STYLES[s]).join(', ')})`:''}${e.usedMeasures?' · conferiu medidas':''}${e.usedNightView?' · viu à noite':''}` : 'Não abriu o tour 360°';
+  $('#r-tl').innerHTML = `<li class="tour"><time>${hh}</time>${tourLine}</li>`
+    + `<li><time>${hh}</time>${d.connector==='site'?`Pediu visita pelo site (${d.when})`:'Clicou no WhatsApp da página do imóvel'}</li>`
+    + `<li><time>${hh}</time>Imóvel identificado · AP1842 (pela página do imóvel)</li>`
+    + `<li><time>${hh}</time>Classificado como LOCAÇÃO (pelo imóvel) · entra no rodízio</li>`;
+  document.body.classList.add('show-res'); scrollTo(0,0); $('#res h1').focus?.();
+  showResult.last=d;
+}
+$('#r-back').addEventListener('click', ()=>{ document.body.classList.remove('show-res'); scrollTo(0,0); resize(); });
+$('#r-sim').addEventListener('click', ()=>{
+  Object.assign(TR.ms,{sala:62000,cozinha:71000,varanda:24000,suite:38000,banho:12000});
+  Object.assign(TR.visits,{sala:3,cozinha:4,varanda:1,suite:1,banho:1}); TR.styles.add('vazio'); TR.measures=true; TR.night=true;
+  showResult(showResult.last || {connector:'site',name:'Visitante',phone:'+55 11 90000-0000',when:'Sábado'});
+});
+
+/* ---------- foto 360° real (equiretangular) ---------- */
+$('#file').addEventListener('change', e=>{
+  const f=e.target.files[0]; e.target.value=''; if (!f || !R) return;
+  const img=new Image(), url=URL.createObjectURL(f);
+  img.onload=()=>{
+    const ratio=img.width/img.height; if (Math.abs(ratio-2)>0.15) toast('Essa foto não tem proporção 2:1; o resultado pode sair distorcido.');
+    const max=Math.min(R.maxTex,8192), w=Math.min(img.width,max), h=Math.round(w/ratio);
+    const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); URL.revokeObjectURL(url);
+    if (R.eq) gl.deleteTexture(R.eq);
+    R.eq=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,R.eq); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,c); setTexParams(gl.TEXTURE_2D);
+    V.mode='eq'; V.yaw=0; V.pitch=0; stage.classList.add('eq'); enterImmersive();
+  };
+  img.onerror=()=>{ URL.revokeObjectURL(url); toast('Não consegui abrir essa imagem.'); };
+  img.src=url;
+});
+
+/* ---------- cards de ambientes ---------- */
+function buildRoomCards(){
+  $('#rooms').innerHTML = ROOMS.map((r,i)=>{ const [x0,z0,x1,z1]=r.rect, a=((x1-x0-T)*(z1-z0-T)).toFixed(1).replace('.',',');
+    return `<button type="button" class="room-c" data-room="${i}"><span class="ph" role="img" aria-label="${r.nome}"></span><div><b>${r.nome}</b><span>${a} m²</span></div></button>`; }).join('');
+  $$('.room-c').forEach(b=>b.addEventListener('click', ()=>{ if (!R){ toast('Seu navegador não abre o tour 3D.'); return; } V.mode='cube'; stage.classList.remove('eq'); enterImmersive(+b.dataset.room); }));
+}
+function fillThumbs(i=0){
+  if (i>=ROOMS.length || !R) return;
+  const run = () => { try { const url=snapshot(i,'classico'); const ph=$(`.room-c[data-room="${i}"] .ph`); const img=new Image(); img.className='ph'; img.alt=ROOMS[i].nome; img.width=320; img.height=240; img.decoding='async'; img.src=url; ph.replaceWith(img); } catch(err){ console.warn(err); } fillThumbs(i+1); };
+  ('requestIdleCallback' in window) ? requestIdleCallback(run,{timeout:800}) : setTimeout(run,60);
+}
+
+/* ---------- partida ---------- */
+buildRoomCards(); buildMap();
+new ResizeObserver(resize).observe(stage);
+new IntersectionObserver(es=>{ heroVisible=es[0].isIntersecting; request(); }).observe(stage);
+RM.addEventListener?.('change', request);
+if (!gl){ $('#load').textContent='Este navegador não abre o tour 3D. As fotos e o agendamento continuam funcionando.'; $('#enter').hidden=true; }
+else {
+  cv.addEventListener('webglcontextlost', e=>{ e.preventDefault(); $('#load').classList.remove('gone'); $('#load').textContent='O tour pausou para economizar memória. Recarregue a página.'; });
+  // assa depois do primeiro quadro pintado, para o texto da página aparecer antes (LCP)
+  requestAnimationFrame(()=>setTimeout(()=>{
+    try {
+      initGL(); V.texA=bake(0,V.style,V.night); V.ready=true; $('#load').classList.add('gone'); resize(); fillThumbs();
+    } catch(err){ console.error(err); $('#load').textContent='Não foi possível montar o 3D neste aparelho.'; }
+  }, 30));
+}
+</script>
+</body>
+</html>
